@@ -7,33 +7,27 @@ def calculadora(expressao):
     print(lista)
 
     operador = " "
-    resultado = []
-    argumento = 0
+    resultado = 0
     index = 0
 
     for e in lista:
         if e == '+' or e == '-':
-            print("Entrou no if +")
             operador = e
-            print(operador)
         else:
             if index == 0:
-                print("Entrou no if index")
                 numero = int(e)
-                argumento = numero
+                resultado = numero
             else:
                 if operador == '+':
                     numero = int(e)
-                    operacao = argumento + numero
-                    resultado.append(operacao)
+                    resultado = resultado + numero
                 else:
                     numero = int(e)
-                    operacao = argumento - numero
-                    resultado.append(operacao)
+                    resultado = resultado - numero
 
         index += 1
 
-    return resultado[0]
+    return resultado
 
 
 def main ():
