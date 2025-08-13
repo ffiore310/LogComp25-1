@@ -11,7 +11,7 @@ def verifica(expressao):
     lista = []
 
     for i, c in enumerate(expressao):
-        print(c)
+        # print(c)
         if i == 0:
             if c == '+' or c == '-':
                 raise ValueError("Expressao comeca com um operador!")
@@ -44,13 +44,13 @@ def verifica(expressao):
 
 def calculadora(expressao):
 
-    print(f"A expressão recebida foi: {expressao}")
+    # print(f"A expressão recebida foi: {expressao}")
     
     expressao_limpa = limpa(expressao)
-    print(expressao_limpa)
+    # print(expressao_limpa)
 
     lista = verifica(expressao_limpa)
-    print(lista)
+    # print(lista)
 
     operador = ""
     resultado = 0
@@ -79,8 +79,6 @@ def calculadora(expressao):
 
 
 def main ():
-    # string = "  Olá Mundo!  "
-    # print(string.replace(" ",""))
     if len(sys.argv) < 2:
         print("Nenhuma expressão foi passada.")
         return
