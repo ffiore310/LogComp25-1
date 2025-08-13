@@ -1,44 +1,38 @@
 import sys
 
 def limpa(expressao):
-    expressao_limpa = expressao.replace(" ","")
-    return expressao_limpa
+    for i in range(len(expressao) - 2):
+        if expressao[i].isdigit() and expressao[i+1] == ' ' and expressao[i+2].isdigit():
+            raise Exception("Espaço inválido dentro de número")
+    return expressao.replace(" ", "")
 
 def verifica(expressao):
+    if not expressao:
+        raise Exception("Expressão vazia")
 
-    operador = False
-    valor = ""
     lista = []
+    i = 0
+    n = len(expressao)
+    esperando_numero = True
 
-    for i, c in enumerate(expressao):
-        # print(c)
-        if i == 0:
-            if c == '+' or c == '-':
-                raise ValueError("Expressao comeca com um operador!")
-            else:
-                valor += c
+    while i < n:
+        if esperando_numero:
+            if not expressao[i].isdigit():
+                raise Exception("Esperado número")
+            start = i
+            while i < n and expressao[i].isdigit():
+                i += 1
+            lista.append(expressao[start:i])
+            esperando_numero = False 
         else:
-            if operador:
-                if c == '+' or c == '-':
-                    raise ValueError("Expressao invalida: um operador seguido do outro!")
-                else:
-                    if i == len(expressao)-1:
-                        valor+=c
-                        lista.append(valor)
-                    else:
-                        valor += c
-                        operador = False
-            elif c == '+' or c == '-':
-                lista.append(valor)
-                lista.append(c)
-                operador = True
-                valor = ""
-            else:
-                if i == len(expressao)-1:
-                        valor+=c
-                        lista.append(valor)
-                else:
-                    valor += c
+            if expressao[i] not in ['+', '-']:
+                raise Exception("Esperado operador")
+            lista.append(expressao[i])
+            i += 1
+            esperando_numero = True 
+
+    if esperando_numero:
+        raise Exception("Expressão termina com operador")
 
     return lista
 
