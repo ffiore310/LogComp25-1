@@ -1,83 +1,82 @@
 import sys
 
-def limpa(expressao):
-    for i in range(len(expressao) - 2):
-        if expressao[i].isdigit() and expressao[i+1] == ' ' and expressao[i+2].isdigit():
-            raise Exception("Espaço inválido dentro de número")
-    return expressao.replace(" ", "")
+class Lexer:
+    def __init__(self, source):
+        self.source = source
+        self.position = 0
+        self.next = None
 
-def verifica(expressao):
-    if not expressao:
-        raise Exception("Expressão vazia")
-
-    lista = []
-    i = 0
-    n = len(expressao)
-    esperando_numero = True
-
-    while i < n:
-        if esperando_numero:
-            if not expressao[i].isdigit():
-                raise Exception("Esperado número")
-            start = i
-            while i < n and expressao[i].isdigit():
-                i += 1
-            lista.append(expressao[start:i])
-            esperando_numero = False 
+    def selectNext(self):
+        while self.position < len(self.source) and self.source[self.position] == " ":
+            self.position += 1
+            
+        if self.position >= len(self.source):
+            self.next = Token("EOF", '')
+            self.position += 1
+        elif self.source[self.position] == '-':
+            self.next = Token("MINUS", '-')
+            self.position += 1
+        elif self.source[self.position] == '+':
+            self.next = Token("PLUS", '+')
+            self.position += 1
         else:
-            if expressao[i] not in ['+', '-']:
-                raise Exception("Esperado operador")
-            lista.append(expressao[i])
-            i += 1
-            esperando_numero = True 
+            numero = ""
+            while self.position < len(self.source) and self.source[self.position].isdigit():
+                numero += self.source[self.position]
+                self.position += 1
+            inteiro = int(numero)
+            self.next = Token("INT", inteiro)
 
-    if esperando_numero:
-        raise Exception("Expressão termina com operador")
+class Token:
+    def __init__(self, kind, value):
+        self.kind = kind
+        self.value = value
 
-    return lista
+class Parser:
+    lex = None
 
-def calculadora(expressao):
+    def parseExpression():
+        resultado = 0
+        operacao = ''
 
-    # print(f"A expressão recebida foi: {expressao}")
-    
-    expressao_limpa = limpa(expressao)
-    # print(expressao_limpa)
+        if Parser.lex.next.kind != "INT":
+            raise Exception("[Parser] Primeiro caracter não é um número!")
 
-    lista = verifica(expressao_limpa)
-    # print(lista)
+        resultado = Parser.lex.next.value
 
-    operador = ""
-    resultado = 0
-    index = 0
+        Parser.lex.selectNext()
 
-    for e in lista:
-        if e == '+' or e == '-':
-            operador = e
-        elif e == ' ':
-            pass
-        else:
-            if index == 0:
-                numero = int(e)
-                resultado = numero
+        while Parser.lex.next.kind == "PLUS" or Parser.lex.next.kind == "MINUS":
+            operacao = Parser.lex.next.value
+            Parser.lex.selectNext()
+
+            if Parser.lex.next.kind != "INT":
+                raise Exception("[Parser] Era esperado um número, mas veio algo diferente!")
+
+            if operacao == '+':
+                resultado+=Parser.lex.next.value
             else:
-                if operador == '+':
-                    numero = int(e)
-                    resultado = resultado + numero
-                else:
-                    numero = int(e)
-                    resultado = resultado - numero
+                resultado-=Parser.lex.next.value
 
-        index += 1
+            Parser.lex.selectNext()
+        
+        return resultado
 
-    return resultado
-
+    def run(code):
+        Parser.lex = Lexer(code)
+        Parser.lex.selectNext()
+        result = Parser.parseExpression()
+        if Parser.lex.next.kind != "EOF":
+            raise Exception("[Parser] Era esperado EOF, mas veio algo diferente!")  
+        return result 
 
 def main ():
     if len(sys.argv) < 2:
         print("Nenhuma expressão foi passada.")
         return
-    argumento = sys.argv[1]
-    resultado = calculadora(argumento)
+    
+    resultado = Parser.run(sys.argv[1])
+    # resultado = Parser.run("1 + 2- 33")
     print(resultado)
 
 if __name__ == "__main__":
