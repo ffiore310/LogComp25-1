@@ -77,7 +77,7 @@ class Parser:
             if operacao == '*':
                 resultado = resultado * Parser.parseFactor()
             else:
-                resultado = resultado / Parser.parseFactor()
+                resultado = resultado // Parser.parseFactor()
         
         return resultado
 
