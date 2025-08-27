@@ -19,6 +19,18 @@ class Lexer:
         elif self.source[self.position] == '+':
             self.next = Token("PLUS", '+')
             self.position += 1
+        elif self.source[self.position] == '*':
+            self.next = Token("MULTI", '*')
+            self.position += 1
+        elif self.source[self.position] == '/':
+            self.next = Token("DIV", '/')
+            self.position += 1
+        elif self.source[self.position] == '(':
+            self.next = Token("OPEN_PAR", '(')
+            self.position += 1
+        elif self.source[self.position] == ')':
+            self.next = Token("CLOSE_PAR", ')')
+            self.position += 1
         else:
             numero = ""
             while self.position < len(self.source) and self.source[self.position].isdigit():
@@ -39,26 +51,61 @@ class Parser:
         resultado = 0
         operacao = ''
 
-        if Parser.lex.next.kind != "INT":
-            raise Exception("[Parser] Primeiro caracter não é um número!")
-
-        resultado = Parser.lex.next.value
-
-        Parser.lex.selectNext()
+        resultado = Parser.parseTerm()
 
         while Parser.lex.next.kind == "PLUS" or Parser.lex.next.kind == "MINUS":
             operacao = Parser.lex.next.value
             Parser.lex.selectNext()
 
-            if Parser.lex.next.kind != "INT":
-                raise Exception("[Parser] Era esperado um número, mas veio algo diferente!")
-
             if operacao == '+':
-                resultado+=Parser.lex.next.value
+                resultado+=Parser.parseTerm()
             else:
-                resultado-=Parser.lex.next.value
+                resultado-=Parser.parseTerm()
+        
+        return resultado
+    
+    def parseTerm():
+        resultado = 0
+        operacao = ''
 
+        resultado = Parser.parseFactor()
+
+        while Parser.lex.next.kind == "MULTI" or Parser.lex.next.kind == "DIV":
+            operacao = Parser.lex.next.value
             Parser.lex.selectNext()
+
+            if operacao == '*':
+                resultado = resultado * Parser.parseFactor()
+            else:
+                resultado = resultado / Parser.parseFactor()
+        
+        return resultado
+
+    def parseFactor():
+        resultado = 0
+
+        if Parser.lex.next.kind == "INT":
+            resultado = Parser.lex.next.value
+            Parser.lex.selectNext()
+        
+        elif Parser.lex.next.kind == "OPEN_PAR":
+            Parser.lex.selectNext()
+            resultado = Parser.parseExpression()
+            if Parser.lex.next.kind != "CLOSE_PAR":
+                raise Exception("Parênteses não foram fechados!")
+            else:
+                Parser.lex.selectNext()
+
+        elif Parser.lex.next.kind == "PLUS":
+            Parser.lex.selectNext()
+            resultado += Parser.parseFactor()
+
+        elif Parser.lex.next.kind == "MINUS":
+            Parser.lex.selectNext()
+            resultado -= Parser.parseFactor()
+
+        else:
+            raise Exception("Símbolo Inválido!")
         
         return resultado
 
@@ -76,7 +123,7 @@ def main ():
         return
     
     resultado = Parser.run(sys.argv[1])
-    # resultado = Parser.run("1 + 2- 33")
+    # resultado = Parser.run("1+2*3")
     print(resultado)
 
 if __name__ == "__main__":
