@@ -5,4 +5,5 @@
 Repositório privado para o desenvolvimento do projeto e dos roteiros relacionados a matéria de Lógica da Computação 
 
 ### Diagrama sintático do Projeto
-<img width="300" height="122" alt="image" src="https://github.com/user-attachments/assets/f4c2ffb1-6b36-4631-ba27-689b13e946dc" />
+<img width="467" height="361" alt="image" src="https://github.com/user-attachments/assets/b1807032-4559-436d-a5d7-c3fb1d5cd526" />
+
