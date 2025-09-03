@@ -1,4 +1,5 @@
 import sys
+from typing import List
 
 class Lexer:
     def __init__(self, source):
@@ -56,11 +57,7 @@ class Parser:
         while Parser.lex.next.kind == "PLUS" or Parser.lex.next.kind == "MINUS":
             operacao = Parser.lex.next.value
             Parser.lex.selectNext()
-
-            if operacao == '+':
-                resultado+=Parser.parseTerm()
-            else:
-                resultado-=Parser.parseTerm()
+            resultado = BinOp(operacao, [resultado, Parser.parseTerm()])
         
         return resultado
     
@@ -73,11 +70,7 @@ class Parser:
         while Parser.lex.next.kind == "MULTI" or Parser.lex.next.kind == "DIV":
             operacao = Parser.lex.next.value
             Parser.lex.selectNext()
-
-            if operacao == '*':
-                resultado = resultado * Parser.parseFactor()
-            else:
-                resultado = resultado // Parser.parseFactor()
+            resultado = BinOp(operacao, [resultado, Parser.parseTerm()])
         
         return resultado
 
@@ -85,7 +78,7 @@ class Parser:
         resultado = 0
 
         if Parser.lex.next.kind == "INT":
-            resultado = Parser.lex.next.value
+            resultado = IntVal(Parser.lex.next.value, [])
             Parser.lex.selectNext()
         
         elif Parser.lex.next.kind == "OPEN_PAR":
@@ -98,11 +91,11 @@ class Parser:
 
         elif Parser.lex.next.kind == "PLUS":
             Parser.lex.selectNext()
-            resultado += Parser.parseFactor()
+            resultado = UnOp('+', [Parser.parseFactor()])
 
         elif Parser.lex.next.kind == "MINUS":
             Parser.lex.selectNext()
-            resultado -= Parser.parseFactor()
+            resultado = UnOp('-', [Parser.parseFactor()])
 
         else:
             raise Exception("Símbolo Inválido!")
@@ -116,6 +109,34 @@ class Parser:
         if Parser.lex.next.kind != "EOF":
             raise Exception("[Parser] Era esperado EOF, mas veio algo diferente!")  
         return result 
+    
+class Node:
+    def __init__(self, value, children):
+        self.value = value
+        self.children = children
+
+    def evaluate(self):
+        pass
+
+class IntVal(Node):
+    def evaluate(self):
+        return self.value
+    
+class UnOp(Node):
+    def evaluate(self):
+        if self.value == '+':
+            return self.children[0].evaluate()
+        else:
+            return -self.children[0].evaluate()
+    
+class BinOp(Node):
+    def evaluate(self):
+        n1 = self.children[0].evaluate()
+        n2 = self.children[1].evaluate()
+        if self.value == '+':
+            return n1 + n2
+        else:
+            return n1 - n2
 
 def main ():
     if len(sys.argv) < 2:
@@ -123,8 +144,9 @@ def main ():
         return
     
     resultado = Parser.run(sys.argv[1])
+    result = resultado.evaluate()
     # resultado = Parser.run("1+2*3")
-    print(resultado)
+    print(result)
 
 if __name__ == "__main__":
     main()
