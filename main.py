@@ -70,7 +70,7 @@ class Parser:
         while Parser.lex.next.kind == "MULTI" or Parser.lex.next.kind == "DIV":
             operacao = Parser.lex.next.value
             Parser.lex.selectNext()
-            resultado = BinOp(operacao, [resultado, Parser.parseTerm()])
+            resultado = BinOp(operacao, [resultado, Parser.parseFactor()])
         
         return resultado
 
@@ -144,8 +144,8 @@ def main ():
         return
     
     resultado = Parser.run(sys.argv[1])
-    result = resultado.evaluate()
     # resultado = Parser.run("1+2*3")
+    result = resultado.evaluate()
     print(result)
 
 if __name__ == "__main__":
