@@ -135,6 +135,10 @@ class BinOp(Node):
         n2 = self.children[1].evaluate()
         if self.value == '+':
             return n1 + n2
+        elif self.value == '*':
+            return n1 * n2
+        elif self.value == '/':
+            return n1 // n2
         else:
             return n1 - n2
 
