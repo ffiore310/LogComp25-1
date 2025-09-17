@@ -3,12 +3,10 @@ from typing import List
 import re
 
 class Prepro:
-    
-    _inline_comment_pattern = re.compile(r'//[^\r\n]*')
+    comentario = re.compile(r'//[^\r\n]*')
 
     def filter(source: str) -> str:
-        
-        return Prepro._inline_comment_pattern.sub('', source)
+        return Prepro.comentario.sub('', source)
 
 class Lexer:
     def __init__(self, source):
@@ -73,6 +71,57 @@ class Token:
 class Parser:
     lex = None
 
+    def parseProgram():
+        filhos = []
+
+        while Parser.lex.next.kind != "EOF":
+            stmt = Parser.parseStatement()
+            filhos.append(stmt)
+
+            if Parser.lex.next.kind == "END":
+                Parser.lex.selectNext()
+            elif Parser.lex.next.kind != "EOF":
+                raise Exception("[Parser] Era esperado ';' ao final da instrução")
+
+        return Block(None, filhos)
+
+    def parseStatement():
+        resultado = None
+
+        if Parser.lex.next.kind == "IDEN":
+            id_node = Identifier(Parser.lex.next.value, [])
+            Parser.lex.selectNext()
+
+            if Parser.lex.next.kind != "ASSIGN":
+                raise Exception("[Parser] Era esperado '=' após identificador")
+            Parser.lex.selectNext()
+
+            expr = Parser.parseExpression()
+            resultado = Assignment(None, [id_node, expr])
+
+        elif Parser.lex.next.kind == "PRINT":
+            Parser.lex.selectNext()
+
+            if Parser.lex.next.kind != "OPEN_PAR":
+                raise Exception("[Parser] Era esperado '(' após 'print'")
+            Parser.lex.selectNext()
+
+            expr = Parser.parseExpression()
+
+            if Parser.lex.next.kind != "CLOSE_PAR":
+                raise Exception("[Parser] Era esperado ')' após expressão no print")
+            Parser.lex.selectNext()
+
+            resultado = Print(None, [expr])
+
+        elif Parser.lex.next.kind == "END":
+            resultado = NoOp(None, [])
+
+        else:
+            raise Exception("[Parser] Instrução inválida")
+
+        return resultado
+
     def parseExpression():
         resultado = 0
         operacao = ''
@@ -129,57 +178,6 @@ class Parser:
         else:
             raise Exception("Símbolo Inválido!")
         
-        return resultado
-
-    def parseProgram():
-        filhos = []
-
-        while Parser.lex.next.kind != "EOF":
-            stmt = Parser.parseStatement()
-            filhos.append(stmt)
-
-            if Parser.lex.next.kind == "END":
-                Parser.lex.selectNext()
-            elif Parser.lex.next.kind != "EOF":
-                raise Exception("[Parser] Era esperado ';' ao final da instrução")
-
-        return Block(None, filhos)
-
-    def parseStatement():
-        resultado = None
-
-        if Parser.lex.next.kind == "IDEN":
-            id_node = Identifier(Parser.lex.next.value, [])
-            Parser.lex.selectNext()
-
-            if Parser.lex.next.kind != "ASSIGN":
-                raise Exception("[Parser] Era esperado '=' após identificador")
-            Parser.lex.selectNext()
-
-            expr = Parser.parseExpression()
-            resultado = Assignment(None, [id_node, expr])
-
-        elif Parser.lex.next.kind == "PRINT":
-            Parser.lex.selectNext()
-
-            if Parser.lex.next.kind != "OPEN_PAR":
-                raise Exception("[Parser] Era esperado '(' após 'print'")
-            Parser.lex.selectNext()
-
-            expr = Parser.parseExpression()
-
-            if Parser.lex.next.kind != "CLOSE_PAR":
-                raise Exception("[Parser] Era esperado ')' após expressão no print")
-            Parser.lex.selectNext()
-
-            resultado = Print(None, [expr])
-
-        elif Parser.lex.next.kind == "END":
-            resultado = NoOp(None, [])
-
-        else:
-            raise Exception("[Parser] Instrução inválida")
-
         return resultado
     
     def run(code):
@@ -273,8 +271,7 @@ def main ():
     code = Prepro.filter(code)
     resultado = Parser.run(code)
     st = SymbolTable()
-    result = resultado.evaluate(st)
-    # print(result)
+    resultado.evaluate(st)
 
 if __name__ == "__main__":
     main()
