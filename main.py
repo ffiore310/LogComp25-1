@@ -32,6 +32,18 @@ class Lexer:
         elif self.source[self.position] == ')':
             self.next = Token("CLOSE_PAR", ')')
             self.position += 1
+        elif self.source[self.position] == '=':
+            self.next = Token("ASSIGN", '=')
+            self.position += 1
+        elif self.source[self.position] == ';':
+            self.next = Token("END", ';')
+            self.position += 1
+        elif self.source[self.position].isletter():
+            id = ""
+            while self.position < len(self.source) and (self.source[self.position].isletter() or self.source[self.position].isdigit() or self.source[self.position] == '_'):
+                id += self.source[self.position]
+                self.position += 1
+            self.next = Token("IDEN", id)
         else:
             numero = ""
             while self.position < len(self.source) and self.source[self.position].isdigit():
@@ -103,6 +115,7 @@ class Parser:
         return resultado
 
     def run(code):
+        # colocar o filter() da classe Prepro aqui depois
         Parser.lex = Lexer(code)
         Parser.lex.selectNext()
         result = Parser.parseExpression()
@@ -110,29 +123,42 @@ class Parser:
             raise Exception("[Parser] Era esperado EOF, mas veio algo diferente!")  
         return result 
     
+class SymbolTable:
+    table = {}
+
+    def getter(key):
+        return SymbolTable.table[key] #Aqui ele retona um objeto do tipo Variable
+    
+    def setter(key, value):
+        SymbolTable.table[key] = value
+    
+class Variable:
+    def __init__(self, value):
+        self.value = value
+
 class Node:
     def __init__(self, value, children):
         self.value = value
         self.children = children
 
-    def evaluate(self):
+    def evaluate(self, st):
         pass
 
 class IntVal(Node):
-    def evaluate(self):
+    def evaluate(self, st):
         return self.value
     
 class UnOp(Node):
-    def evaluate(self):
+    def evaluate(self, st):
         if self.value == '+':
-            return self.children[0].evaluate()
+            return self.children[0].evaluate(st)
         else:
-            return -self.children[0].evaluate()
+            return -self.children[0].evaluate(st)
     
 class BinOp(Node):
-    def evaluate(self):
-        n1 = self.children[0].evaluate()
-        n2 = self.children[1].evaluate()
+    def evaluate(self, st):
+        n1 = self.children[0].evaluate(st)
+        n2 = self.children[1].evaluate(st)
         if self.value == '+':
             return n1 + n2
         elif self.value == '*':
@@ -142,14 +168,26 @@ class BinOp(Node):
         else:
             return n1 - n2
 
+class Identifier(Node):
+    def evaluate(self, st):
+        return st.getter(self.value).value
+    
+class Print(Node):
+    def evaluate(self, st):
+        print(self.children[0].evaluate(st))
+
+class Assignment(Node):
+    def evaluate(self, st):
+        st.setter(self.children[0].value, Variable(self.children[1].evaluate(st)))
+
 def main ():
     if len(sys.argv) < 2:
         print("Nenhuma expressão foi passada.")
         return
     
     resultado = Parser.run(sys.argv[1])
-    # resultado = Parser.run("1+2*3")
-    result = resultado.evaluate()
+    st = SymbolTable()
+    result = resultado.evaluate(st)
     print(result)
 
 if __name__ == "__main__":
