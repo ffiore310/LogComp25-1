@@ -52,7 +52,7 @@ class Lexer:
             while self.position < len(self.source) and (self.source[self.position].isalpha() or self.source[self.position].isdigit() or self.source[self.position] == '_'):
                 id += self.source[self.position]
                 self.position += 1
-            list = ["print"]
+            list = ["log"]
             if id in list:
                 self.next = Token("PRINT", id)    
             else:
