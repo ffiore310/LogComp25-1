@@ -193,11 +193,14 @@ class Parser:
 class SymbolTable:
     table = {}
 
+    @staticmethod
     def getter(key):
-        if SymbolTable.table[key] is None:
-            raise Exception("[SymbolTable] Variável não foi encontrada na Tabela")
-        return SymbolTable.table[key] #Aqui ele retona um objeto do tipo Variable
-    
+        try:
+            return SymbolTable.table[key]
+        except KeyError:
+            raise Exception(f"[SymbolTable] Variável '{key}' não encontrada")
+
+    @staticmethod
     def setter(key, value):
         SymbolTable.table[key] = value
     
@@ -271,7 +274,7 @@ def main ():
     resultado = Parser.run(code)
     st = SymbolTable()
     result = resultado.evaluate(st)
-    print(result)
+    # print(result)
 
 if __name__ == "__main__":
     main()
