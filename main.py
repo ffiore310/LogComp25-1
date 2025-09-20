@@ -21,40 +21,98 @@ class Lexer:
         if self.position >= len(self.source):
             self.next = Token("EOF", '')
             self.position += 1
+
         elif self.source[self.position] == '-':
             self.next = Token("MINUS", '-')
             self.position += 1
+
         elif self.source[self.position] == '+':
             self.next = Token("PLUS", '+')
             self.position += 1
+
         elif self.source[self.position] == '*':
             self.next = Token("MULTI", '*')
             self.position += 1
+
         elif self.source[self.position] == '/':
             self.next = Token("DIV", '/')
             self.position += 1
+
+        elif self.source[self.position] == '&':
+            id = ""
+            while self.position < len(self.source) and self.source[self.position] == '&':
+                id += self.source[self.position]
+                self.position += 1
+            self.next = Token("AND", id)
+
+        elif self.source[self.position] == '|':
+            id = ""
+            while self.position < len(self.source) and self.source[self.position] == '|':
+                id += self.source[self.position]
+                self.position += 1
+            self.next = Token("OR", id)
+
+        elif self.source[self.position] == '!':
+            self.next = Token("NOT", '!')
+            self.position += 1
+
         elif self.source[self.position] == '(':
             self.next = Token("OPEN_PAR", '(')
             self.position += 1
+
         elif self.source[self.position] == ')':
             self.next = Token("CLOSE_PAR", ')')
             self.position += 1
-        elif self.source[self.position] == '=':
-            self.next = Token("ASSIGN", '=')
+
+        elif self.source[self.position] == '{':
+            self.next = Token("OPEN_BRA", '{')
             self.position += 1
+
+        elif self.source[self.position] == '}':
+            self.next = Token("CLOSE_BRA", '}')
+            self.position += 1
+
+        elif self.source[self.position] == '=':
+            id = ""
+            while self.position < len(self.source) and self.source[self.position] == '=':
+                id += self.source[self.position]
+                self.position += 1
+            if id == "=":
+                self.next = Token("ASSIGN", id)
+            else:
+                self.next = Token("EQ", id)
+
+        elif self.source[self.position] == '>':
+            self.next = Token("GT", '>')
+            self.position += 1
+
+        elif self.source[self.position] == '<':
+            self.next = Token("LT", '<')
+            self.position += 1
+
         elif self.source[self.position] == ';':
             self.next = Token("END", ';')
             self.position += 1
+
         elif self.source[self.position].isalpha():
             id = ""
             while self.position < len(self.source) and (self.source[self.position].isalpha() or self.source[self.position].isdigit() or self.source[self.position] == '_'):
                 id += self.source[self.position]
                 self.position += 1
-            list = ["log"]
-            if id in list:
-                self.next = Token("PRINT", id)    
+            list = ["log", "if", "while", "else", "read"]
+            if id == "log":
+                self.next = Token("PRINT", id)
+            elif id == "if":
+                self.next = Token("IF", id)
+            elif id == "while":
+                self.next = Token("WHILE", id)
+            elif id == "else":
+                self.next = Token("ELSE", id)
+            elif id == "read":
+                self.next = Token("READ", id)
             else:
                 self.next = Token("IDEN", id)
+
         else:
             numero = ""
             while self.position < len(self.source) and self.source[self.position].isdigit(): #aqui eu deveria tratar o caso de uma palavra começar com caracteres especiais: raise error
@@ -77,12 +135,7 @@ class Parser:
         while Parser.lex.next.kind != "EOF":
             stmt = Parser.parseStatement()
             filhos.append(stmt)
-
-            if Parser.lex.next.kind == "END":
-                Parser.lex.selectNext()
-            elif Parser.lex.next.kind != "EOF":
-                raise Exception("[Parser] Era esperado ';' ao final da instrução")
-
+            
         return Block(None, filhos)
 
     def parseStatement():
@@ -96,8 +149,10 @@ class Parser:
                 raise Exception("[Parser] Era esperado '=' após identificador")
             Parser.lex.selectNext()
 
-            expr = Parser.parseExpression()
-            resultado = Assignment(None, [id_node, expr])
+            expr_result = Parser.parseBoolExpression()
+            resultado = Assignment(None, [id_node, expr_result])
+
+            Parser.lex.selectNext()
 
         elif Parser.lex.next.kind == "PRINT":
             Parser.lex.selectNext()
@@ -106,22 +161,115 @@ class Parser:
                 raise Exception("[Parser] Era esperado '(' após 'print'")
             Parser.lex.selectNext()
 
-            expr = Parser.parseExpression()
+            expr_result = Parser.parseBoolExpression()
 
             if Parser.lex.next.kind != "CLOSE_PAR":
                 raise Exception("[Parser] Era esperado ')' após expressão no print")
             Parser.lex.selectNext()
 
-            resultado = Print(None, [expr])
+            resultado = Print(None, [expr_result])
+
+            Parser.lex.selectNext()
+
+        elif Parser.lex.next.kind == "WHILE":
+            Parser.lex.selectNext()
+            if Parser.lex.next.kind != "OPEN_PAR":
+                raise Exception("[Parser] Era esperado '(' após 'while'")
+            Parser.lex.selectNext()
+
+            condition = Parser.parseBoolExpression()
+
+            if Parser.lex.next.kind != "CLOSE_PAR":
+                raise Exception("[Parser] Era esperado ')' após expressão no while")
+            Parser.lex.selectNext()
+
+            loop = Parser.parseStatement()
+
+            resultado = While(None, [condition, loop])
+
+            Parser.lex.selectNext()
+
+        elif Parser.lex.next.kind == "IF":
+            Parser.lex.selectNext()
+
+            if Parser.lex.next.kind != "OPEN_PAR":
+                raise Exception("[Parser] Era esperado '(' após 'if'")
+            Parser.lex.selectNext()
+
+            condition = Parser.parseBoolExpression()
+
+            if Parser.lex.next.kind != "CLOSE_PAR":
+                raise Exception("[Parser] Era esperado ')' após expressão no if")
+            Parser.lex.selectNext()
+
+            bloco1 = Parser.parseStatement()
+
+            if Parser.lex.next.kind == "ELSE":
+                Parser.lex.selectNext()
+                bloco2 = Parser.parseStatement()
+                resultado = If(None, [condition, bloco1, bloco2])
+            else:
+                resultado = If(None, [condition, bloco1])
 
         elif Parser.lex.next.kind == "END":
+            Parser.lex.selectNext()
             resultado = NoOp(None, [])
+
+        elif Parser.lex.next.kind == "OPEN_BRA":
+            block = Parser.parseBlock()
+            resultado = block
 
         else:
             raise Exception("[Parser] Instrução inválida")
 
         return resultado
+    
+    def parseBlock():
+        Parser.lex.selectNext()
+        if Parser.lex.next.kind != "CLOSE_BRA":
+            resultado = Parser.parseStatement()
+            Parser.lex.selectNext()
+            return resultado
+        else:
+            raise Exception("[Parser] Bloco vazio não é permitido")
+            
 
+    def parseBoolExpression():
+        resultado = 0
+        operacao = ''
+
+        resultado = Parser.parseBoolTerm()
+
+        while Parser.lex.next.kind == "OR":
+            operacao = Parser.lex.next.value
+            Parser.lex.selectNext()
+            resultado = BinOp(operacao, [resultado, Parser.parseBoolTerm()])
+
+        return resultado
+
+    def parseBoolTerm():
+        resultado = Parser.parseRefExpression()
+
+        while Parser.lex.next.kind == "AND":
+            operacao = Parser.lex.next.value
+            Parser.lex.selectNext()
+            resultado = BinOp(operacao, [resultado, Parser.parseRefExpression()])
+
+        return resultado
+
+    def parseRefExpression():
+        resultado = 0
+        operacao = ''
+
+        resultado = Parser.parseExpression()
+
+        while Parser.lex.next.kind == "GT" or Parser.lex.next.kind == "LT" or Parser.lex.next.kind == "EQ":
+            operacao = Parser.lex.next.value
+            Parser.lex.selectNext()
+            resultado = BinOp(operacao, [resultado, Parser.parseExpression()])
+        
+        return resultado
+    
     def parseExpression():
         resultado = 0
         operacao = ''
@@ -154,14 +302,10 @@ class Parser:
         if Parser.lex.next.kind == "INT":
             resultado = IntVal(Parser.lex.next.value, [])
             Parser.lex.selectNext()
-        
-        elif Parser.lex.next.kind == "OPEN_PAR":
+
+        elif Parser.lex.next.kind == "IDEN":
+            resultado = Identifier(Parser.lex.next.value, [])
             Parser.lex.selectNext()
-            resultado = Parser.parseExpression()
-            if Parser.lex.next.kind != "CLOSE_PAR":
-                raise Exception("Parênteses não foram fechados!")
-            else:
-                Parser.lex.selectNext()
 
         elif Parser.lex.next.kind == "PLUS":
             Parser.lex.selectNext()
@@ -171,13 +315,26 @@ class Parser:
             Parser.lex.selectNext()
             resultado = UnOp('-', [Parser.parseFactor()])
 
-        elif Parser.lex.next.kind == "IDEN":
-            resultado = Identifier(Parser.lex.next.value, [])
+        elif Parser.lex.next.kind == "NOT":
+            Parser.lex.selectNext()
+            resultado = UnOp('!', [Parser.parseFactor()])
+
+        elif Parser.lex.next.kind == "OPEN_PAR":
+            Parser.lex.selectNext()
+            resultado = Parser.parseBoolExpression()
+            if Parser.lex.next.kind != "CLOSE_PAR":
+                raise Exception("Parênteses não foram fechados!")
+            else:
+                Parser.lex.selectNext()
+
+        elif Parser.lex.next.kind == "READ":
+            Parser.lex.selectNext()
+            resultado = Read()
             Parser.lex.selectNext()
 
         else:
-            raise Exception("Símbolo Inválido!")
-        
+            raise Exception("[Parser] Símbolo Inválido!")
+
         return resultado
     
     def run(code):
@@ -235,8 +392,20 @@ class BinOp(Node):
             return n1 * n2
         elif self.value == '/':
             return n1 // n2
-        else:
+        elif self.value == '-':
             return n1 - n2
+        elif self.value == '===':
+            return n1 == n2
+        elif self.value == '&&':
+            return n1 and n2
+        elif self.value == '||':
+            return n1 or n2
+        elif self.value == '>':
+            return n1 > n2
+        elif self.value == '<':
+            return n1 < n2
+        else:
+            raise Exception(f"[BinOp] Operador '{self.value}' inválido")
 
 class Identifier(Node):
     def evaluate(self, st):
@@ -256,17 +425,45 @@ class Block(Node):
         for child in self.children:
             child.evaluate(st)
 
+class If(Node):
+    def evaluate(self, st):
+        if len(self.children) == 3: #tem else
+            if self.children[0].evaluate(st):
+                self.children[1].evaluate(st)
+            else:
+                self.children[2].evaluate(st)
+        else: #não tem else
+            if self.children[0].evaluate(st):
+                self.children[1].evaluate(st)
+
+class While(Node):
+    def evaluate(self, st):
+        while self.children[0].evaluate(st):
+            self.children[1].evaluate(st)
+
+class Read(Node):
+    def evaluate(self, st):
+        return int(input())
+
 class NoOp(Node):
     pass
 
 def main ():
-    if len(sys.argv) < 2:
-        print("Nenhuma expressão foi passada.")
-        return
+    # if len(sys.argv) < 2:
+    #     print("Nenhuma expressão foi passada.")
+    #     return
     
-    filename = sys.argv[1]
-    with open(filename, "r", encoding="utf-8") as f:
-        code = f.read()
+    # filename = sys.argv[1]
+    # with open(filename, "r", encoding="utf-8") as f:
+    #     code = f.read()
+
+    code = """x = 5;
+
+        if(x < 10) {
+            x = x + 1;
+        };
+
+        log(x);"""
     
     code = Prepro.filter(code)
     resultado = Parser.run(code)
