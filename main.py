@@ -102,7 +102,7 @@ class Lexer:
                 self.next = Token("WHILE", id)
             elif id == "else":
                 self.next = Token("ELSE", id)
-            elif id == "read":
+            elif id == "readline":
                 self.next = Token("READ", id)
             else:
                 self.next = Token("IDEN", id)
@@ -127,8 +127,7 @@ class Parser:
         filhos = []
 
         while Parser.lex.next.kind != "EOF":
-            stmt = Parser.parseStatement()
-            filhos.append(stmt)
+            filhos.append(Parser.parseStatement())
             
         return Block(None, filhos)
 
@@ -323,9 +322,17 @@ class Parser:
                 Parser.lex.selectNext()
 
         elif Parser.lex.next.kind == "READ":
-            Parser.lex.selectNext()
-            resultado = Read()
-            Parser.lex.selectNext()
+            Parser.lex.selectNext()  # consumiu READ
+
+            if Parser.lex.next.kind != "OPEN_PAR":
+                raise Exception("[Parser] Era esperado '(' após 'read/readline'")
+            Parser.lex.selectNext()  # consumiu '('
+
+            if Parser.lex.next.kind != "CLOSE_PAR":
+                raise Exception("[Parser] Era esperado ')' após 'read/readline('")
+            Parser.lex.selectNext()  # consumiu ')'
+
+            resultado = Read(None, [])
 
         else:
             raise Exception("[Parser] Símbolo Inválido!")
