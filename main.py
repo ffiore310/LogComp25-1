@@ -38,19 +38,13 @@ class Lexer:
             self.next = Token("DIV", '/')
             self.position += 1
 
-        elif self.source[self.position] == '&':
-            id = ""
-            while self.position < len(self.source) and self.source[self.position] == '&':
-                id += self.source[self.position]
-                self.position += 1
-            self.next = Token("AND", id)
+        elif self.source[self.position:self.position+2] == '&&':
+            self.next = Token("AND", '&&')
+            self.position += 2
 
-        elif self.source[self.position] == '|':
-            id = ""
-            while self.position < len(self.source) and self.source[self.position] == '|':
-                id += self.source[self.position]
-                self.position += 1
-            self.next = Token("OR", id)
+        elif self.source[self.position:self.position+2] == '||':
+            self.next = Token("OR", '||')
+            self.position += 2
 
         elif self.source[self.position] == '!':
             self.next = Token("NOT", '!')
@@ -99,7 +93,7 @@ class Lexer:
             while self.position < len(self.source) and (self.source[self.position].isalpha() or self.source[self.position].isdigit() or self.source[self.position] == '_'):
                 id += self.source[self.position]
                 self.position += 1
-            list = ["log", "if", "while", "else", "read"]
+            list = ["log", "if", "while", "else", "readline"]
             if id == "log":
                 self.next = Token("PRINT", id)
             elif id == "if":
@@ -152,7 +146,9 @@ class Parser:
             expr_result = Parser.parseBoolExpression()
             resultado = Assignment(None, [id_node, expr_result])
 
-            Parser.lex.selectNext()
+            if Parser.lex.next.kind != "END":
+                raise Exception("[Parser] Era esperado ';' ao final da atribuição")
+            Parser.lex.selectNext()  # consome ';'
 
         elif Parser.lex.next.kind == "PRINT":
             Parser.lex.selectNext()
@@ -169,7 +165,10 @@ class Parser:
 
             resultado = Print(None, [expr_result])
 
-            Parser.lex.selectNext()
+            if Parser.lex.next.kind != "END":
+                raise Exception("[Parser] Era esperado ';' ao final do print")
+            Parser.lex.selectNext()  # consome ';'
+
 
         elif Parser.lex.next.kind == "WHILE":
             Parser.lex.selectNext()
@@ -186,8 +185,6 @@ class Parser:
             loop = Parser.parseStatement()
 
             resultado = While(None, [condition, loop])
-
-            Parser.lex.selectNext()
 
         elif Parser.lex.next.kind == "IF":
             Parser.lex.selectNext()
@@ -216,8 +213,7 @@ class Parser:
             resultado = NoOp(None, [])
 
         elif Parser.lex.next.kind == "OPEN_BRA":
-            block = Parser.parseBlock()
-            resultado = block
+            resultado = Parser.parseBlock()
 
         else:
             raise Exception("[Parser] Instrução inválida")
@@ -225,13 +221,12 @@ class Parser:
         return resultado
     
     def parseBlock():
-        Parser.lex.selectNext()
-        if Parser.lex.next.kind != "CLOSE_BRA":
-            resultado = Parser.parseStatement()
-            Parser.lex.selectNext()
-            return resultado
-        else:
-            raise Exception("[Parser] Bloco vazio não é permitido")
+        Parser.lex.selectNext()  # consome '{'
+        filhos = []
+        while Parser.lex.next.kind != "CLOSE_BRA":
+            filhos.append(Parser.parseStatement())  # (Assignment/Print já consomem ';'; outros não precisam)
+        Parser.lex.selectNext()  # consome '}'
+        return Block(None, filhos)
             
 
     def parseBoolExpression():
@@ -379,8 +374,10 @@ class UnOp(Node):
     def evaluate(self, st):
         if self.value == '+':
             return self.children[0].evaluate(st)
-        else:
+        elif self.value == '-':
             return -self.children[0].evaluate(st)
+        else: #self.value == '!'
+            return not self.children[0].evaluate(st)
     
 class BinOp(Node):
     def evaluate(self, st):
