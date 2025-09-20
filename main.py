@@ -449,21 +449,21 @@ class NoOp(Node):
     pass
 
 def main ():
-    # if len(sys.argv) < 2:
-    #     print("Nenhuma expressão foi passada.")
-    #     return
+    if len(sys.argv) < 2:
+        print("Nenhuma expressão foi passada.")
+        return
     
-    # filename = sys.argv[1]
-    # with open(filename, "r", encoding="utf-8") as f:
-    #     code = f.read()
+    filename = sys.argv[1]
+    with open(filename, "r", encoding="utf-8") as f:
+        code = f.read()
 
-    code = """x = 5;
+    # code = """x = 5;
 
-        if(x < 10) {
-            x = x + 1;
-        };
+    #     if(x < 10) {
+    #         x = x + 1;
+    #     };
 
-        log(x);"""
+    #     log(x);"""
     
     code = Prepro.filter(code)
     resultado = Parser.run(code)
