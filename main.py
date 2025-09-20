@@ -462,8 +462,6 @@ def main ():
     #     if(x < 10) {
     #         x = x + 1;
     #     };
-
-    #     log(x);"""
     
     code = Prepro.filter(code)
     resultado = Parser.run(code)
