@@ -548,8 +548,12 @@ class Identifier(Node):
     
 class Print(Node):
     def evaluate(self, st):
-        expr = self.children[0].evaluate(st).value #mesma coisa que acontece no evaluate de Assingment
-        print(expr)
+        variable = self.children[0].evaluate(st)
+        value = variable.value
+        if variable.type == "boolean":
+            print("true" if value else "false")
+        else:
+            print(value)
 
 class Assignment(Node):
     def evaluate(self, st):
