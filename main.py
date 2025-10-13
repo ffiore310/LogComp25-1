@@ -120,7 +120,7 @@ class Lexer:
                     self.next = Token("READ", id)
                 elif id == "let":
                     self.next = Token("VAR", id)
-                else:
+                elif id == "true" or id == "false":
                     self.next = Token("BOOL", id)
             elif id in types:
                 self.next = Token("TYPE", id)
@@ -192,7 +192,32 @@ class Parser:
             Parser.lex.selectNext()  # consome ';'
 
         elif Parser.lex.next.kind == "VAR":
-            pass
+            Parser.lex.selectNext()
+
+            if Parser.lex.next.kind != "IDEN":
+                raise Exception("[Parser] Era esperado um Identifier após token de declaração de variável")
+            
+            iden = Identifier(Parser.lex.next.value, [])
+            
+            Parser.lex.selectNext()
+
+            if Parser.lex.next.kind != "SEMI":
+                raise Exception("[Parser] Era esperado um ':' na declaração de variável")
+            Parser.lex.selectNext()
+
+            if Parser.lex.next.kind != "TYPE":
+                raise Exception("[Parser] É necessário definir o tipo da variável durante a sua declaração")
+            
+            tipo = Parser.lex.next.value
+
+            Parser.lex.selectNext()
+
+            if Parser.lex.next.kind == "ASSIGN":
+                Parser.lex.selectNext()
+                expressao = Parser.parseBoolExpression()
+                resultado = VarDec(tipo, [iden, expressao])
+            else:
+                resultado = VarDec(tipo, [iden])
 
         elif Parser.lex.next.kind == "WHILE":
             Parser.lex.selectNext()
@@ -252,7 +277,6 @@ class Parser:
         Parser.lex.selectNext()  # consome '}'
         return Block(None, filhos)
             
-
     def parseBoolExpression():
         resultado = 0
         operacao = ''
@@ -326,6 +350,14 @@ class Parser:
             resultado = Identifier(Parser.lex.next.value, [])
             Parser.lex.selectNext()
 
+        elif Parser.lex.next.kind == "BOOL":
+            resultado = BoolVal(Parser.lex.next.value, [])
+            Parser.lex.selectNext()
+
+        elif Parser.lex.next.kind == "STR":
+            resultado = StringVal(Parser.lex.next.value, [])
+            Parser.lex.selectNext()
+
         elif Parser.lex.next.kind == "PLUS":
             Parser.lex.selectNext()
             resultado = UnOp('+', [Parser.parseFactor()])
@@ -381,16 +413,21 @@ class SymbolTable:
             return SymbolTable.table[key]
         except KeyError:
             raise Exception(f"[SymbolTable] Variável '{key}' não encontrada")
-
+        
     @staticmethod
-    def setter(key, value):
-        try:
-            SymbolTable.table[key] = value
-        except:
-            raise Exception(f"[SymbolTable] Variável '{key}' não declarada previamente")
+    def setter(key, variable):
+        if key not in SymbolTable.table:
+            raise Exception(f"[SymbolTable] Variável '{key}' não foi declarada previamente")
+        var_existente = SymbolTable.table[key]
+
+        if var_existente.type != variable.type:
+            raise Exception(f"[SymbolTable] Tipos incompatíveis em atribuição: {var_existente.type} <- {variable.type}")
+        SymbolTable.table[key].value = variable.value
 
     @staticmethod
     def create_variable(key, value, type):
+        if key in SymbolTable.table:
+            raise Exception(f"[SymbolTable] Variável '{key}' já declarada")
         valor = Variable(value, type)
         SymbolTable.table[key] = valor
     
@@ -409,72 +446,115 @@ class Node:
 
 class IntVal(Node):
     def evaluate(self, st):
-        return self.value
+        return Variable(self.value, "number")
     
 class BoolVal(Node):
     def evaluate(self, st):
-        return self.value
+         return Variable(self.value, "boolean")
     
 class StringVal(Node):
     def evaluate(self, st):
-        return self.value
+         return Variable(self.value, "string")
     
 class UnOp(Node):
     def evaluate(self, st):
+        child = self.children[0].evaluate(st)
         if self.value == '+':
-            return self.children[0].evaluate(st)
+            if child.type != "number":
+                raise Exception("[UnOp] '+' requer número")
+            return Variable(+child.value, "number")
         elif self.value == '-':
-            return -self.children[0].evaluate(st)
-        else: #self.value == '!'
-            return not self.children[0].evaluate(st)
+            if child.type != "number":
+                raise Exception("[UnOp] '-' requer número")
+            return Variable(-child.value, "number")
+        elif self.value == '!':
+            if child.type != "boolean":
+                raise Exception("[UnOp] '!' requer boolean")
+            return Variable(not child.value, "boolean")
+
     
 class BinOp(Node):
     def evaluate(self, st):
         n1 = self.children[0].evaluate(st)
         n2 = self.children[1].evaluate(st)
+
+        t1, t2 = n1.type, n2.type
+        v1, v2 = n1.value, n2.value
+
         if self.value == '+':
-            return n1 + n2
-        elif self.value == '*':
-            return n1 * n2
-        elif self.value == '/':
-            return n1 // n2
-        elif self.value == '-':
-            return n1 - n2
-        elif self.value == '===':
-            return n1 == n2
-        elif self.value == '&&':
-            return n1 and n2
-        elif self.value == '||':
-            return n1 or n2
-        elif self.value == '>':
-            return n1 > n2
-        elif self.value == '<':
-            return n1 < n2
+            if t1 == t2 == "number":
+                return Variable(v1 + v2, "number")
+            if t1 == t2 == "string":
+                return Variable(v1 + v2, "string")
+            if t1 == "string" or t2 == "string":
+                return Variable(str(v1) + str(v2), "string")
+            raise Exception("[BinOp] Tipos inválidos para '+'")
+
+        elif self.value in ('-', '*', '/'):
+            if t1 == t2 == "number":
+                if self.value == '-':
+                    res = v1 - v2
+                elif self.value == '*':
+                    res = v1*v2
+                else:
+                    res = v1//v2
+                return Variable(res, "number")
+            else:
+                raise Exception(f"[BinOp] Tipos inválidos para '{self.value}'")
+
+        elif self.value in ('>', '<', '==='):
+            if t1 == t2:
+                if self.value == '>':
+                    res = (v1 > v2)
+                elif self.value == '<':
+                    res = (v1 < v2)
+                else:
+                    res = (v1 == v2)
+                return Variable(res, "boolean")
+            else:
+                raise Exception("[BinOp] Comparação entre tipos diferentes")
+
+        elif self.value in ('&&', '||'):
+            if t1 == t2 == "boolean":
+                if self.value == '&&':
+                    res = (v1 and v2)
+                else:
+                    res = (v1 or v2)
+                return Variable(res, "boolean")
+            else:
+                raise Exception("[BinOp] Tipos inválidos para operador lógico")
+
         else:
             raise Exception(f"[BinOp] Operador '{self.value}' inválido")
 
 class Identifier(Node):
     def evaluate(self, st):
-        return st.getter(self.value).value
+        return st.getter(self.value)
     
 class Print(Node):
     def evaluate(self, st):
-        expr = self.children[0].evaluate(st) #mesma coisa que acontece no evaluate de Assingment
+        expr = self.children[0].evaluate(st).value #mesma coisa que acontece no evaluate de Assingment
         print(expr)
 
 class Assignment(Node):
     def evaluate(self, st):
-        st.setter(self.children[0].value, Variable(self.children[1].evaluate(st)))
+        value_var = self.children[1].evaluate(st) #vai ser do tipo Variable
+        st.setter(self.children[0].value, value_var) #setter recebe o valor com Variable ja
 
 class VarDec(Node):
     def evaluate(self, st):
         if len(self.children) == 1:
-            pass
+            st.create_variable(self.children[0].value, None, self.value)
         else:
-            pass
+            if self.value != self.children[1].evaluate(st):
+                raise Exception(f"[VarDec] Tipos incompatíveis na declaração")
+            st.create_variable(self.children[0].value, self.children[1].evaluate(st).value , self.value)
 
 class If(Node):
     def evaluate(self, st):
+        if self.children[0].evaluate(st).type != "boolean":
+            raise Exception("[If] Condição deve ser booleana")
+        
         if len(self.children) == 3: #tem else
             if self.children[0].evaluate(st):
                 self.children[1].evaluate(st)
@@ -486,12 +566,15 @@ class If(Node):
 
 class While(Node):
     def evaluate(self, st):
+        if self.children[0].evaluate(st).type != "boolean":
+            raise Exception("[While] Condição deve ser booleana")
+        
         while self.children[0].evaluate(st):
             self.children[1].evaluate(st)
 
 class Read(Node):
     def evaluate(self, st):
-        return int(input())
+        return Variable(int(input()), "number")
     
 class Block(Node):
     def evaluate(self, st):
