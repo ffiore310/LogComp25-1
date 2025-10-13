@@ -88,32 +88,55 @@ class Lexer:
             self.next = Token("END", ';')
             self.position += 1
 
+        elif self.source[self.position] == ':':
+            self.next = Token("SEMI", ':')
+            self.position += 1
+
+        elif self.source[self.position] == '"':
+            self.position += 1
+            id = ""
+            while self.position < len(self.source) and self.source[self.position] != '"':
+                id += self.source[self.position]
+                self.position += 1
+            self.next = Token("STR", id)
+
         elif self.source[self.position].isalpha():
             id = ""
             while self.position < len(self.source) and (self.source[self.position].isalpha() or self.source[self.position].isdigit() or self.source[self.position] == '_'):
                 id += self.source[self.position]
                 self.position += 1
-            list = ["log", "if", "while", "else", "readline"]
-            if id == "log":
-                self.next = Token("PRINT", id)
-            elif id == "if":
-                self.next = Token("IF", id)
-            elif id == "while":
-                self.next = Token("WHILE", id)
-            elif id == "else":
-                self.next = Token("ELSE", id)
-            elif id == "readline":
-                self.next = Token("READ", id)
+            list = ["log", "if", "while", "else", "readline", "true", "false", "let"]
+            types = ["number", "string", "boolean"]
+            if id in list:
+                if id == "log":
+                    self.next = Token("PRINT", id)
+                elif id == "if":
+                    self.next = Token("IF", id)
+                elif id == "while":
+                    self.next = Token("WHILE", id)
+                elif id == "else":
+                    self.next = Token("ELSE", id)
+                elif id == "readline":
+                    self.next = Token("READ", id)
+                elif id == "let":
+                    self.next = Token("VAR", id)
+                else:
+                    self.next = Token("BOOL", id)
+            elif id in types:
+                self.next = Token("TYPE", id)
             else:
                 self.next = Token("IDEN", id)
 
-        else:
+        elif self.source[self.position].isdigit():
             numero = ""
-            while self.position < len(self.source) and self.source[self.position].isdigit(): #aqui eu deveria tratar o caso de uma palavra começar com caracteres especiais: raise error
+            while self.position < len(self.source) and self.source[self.position].isdigit():
                 numero += self.source[self.position]
                 self.position += 1
             inteiro = int(numero)
             self.next = Token("INT", inteiro)
+
+        else:
+            raise Exception("[Lexer] Símbolo não existe no alfabeto da Linguagem (typescript)")
 
 class Token:
     def __init__(self, kind, value):
@@ -168,6 +191,8 @@ class Parser:
                 raise Exception("[Parser] Era esperado ';' ao final do print")
             Parser.lex.selectNext()  # consome ';'
 
+        elif Parser.lex.next.kind == "VAR":
+            pass
 
         elif Parser.lex.next.kind == "WHILE":
             Parser.lex.selectNext()
@@ -359,11 +384,20 @@ class SymbolTable:
 
     @staticmethod
     def setter(key, value):
-        SymbolTable.table[key] = value
+        try:
+            SymbolTable.table[key] = value
+        except:
+            raise Exception(f"[SymbolTable] Variável '{key}' não declarada previamente")
+
+    @staticmethod
+    def create_variable(key, value, type):
+        valor = Variable(value, type)
+        SymbolTable.table[key] = valor
     
 class Variable:
-    def __init__(self, value):
+    def __init__(self, value, type):
         self.value = value
+        self.type = type
 
 class Node:
     def __init__(self, value, children):
@@ -374,6 +408,14 @@ class Node:
         pass
 
 class IntVal(Node):
+    def evaluate(self, st):
+        return self.value
+    
+class BoolVal(Node):
+    def evaluate(self, st):
+        return self.value
+    
+class StringVal(Node):
     def evaluate(self, st):
         return self.value
     
@@ -424,10 +466,12 @@ class Assignment(Node):
     def evaluate(self, st):
         st.setter(self.children[0].value, Variable(self.children[1].evaluate(st)))
 
-class Block(Node):
+class VarDec(Node):
     def evaluate(self, st):
-        for child in self.children:
-            child.evaluate(st)
+        if len(self.children) == 1:
+            pass
+        else:
+            pass
 
 class If(Node):
     def evaluate(self, st):
@@ -448,6 +492,11 @@ class While(Node):
 class Read(Node):
     def evaluate(self, st):
         return int(input())
+    
+class Block(Node):
+    def evaluate(self, st):
+        for child in self.children:
+            child.evaluate(st)
 
 class NoOp(Node):
     pass
@@ -460,12 +509,6 @@ def main ():
     filename = sys.argv[1]
     with open(filename, "r", encoding="utf-8") as f:
         code = f.read()
-
-    # code = """x = 5;
-
-    #     if(x < 10) {
-    #         x = x + 1;
-    #     };
     
     code = Prepro.filter(code)
     resultado = Parser.run(code)
