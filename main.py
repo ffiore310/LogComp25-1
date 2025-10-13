@@ -2,6 +2,15 @@ import sys
 from typing import List
 import re
 
+def ts_repr(val):
+    if val is True:
+        return "true"
+    elif val is False:
+        return "false"
+    elif val is None:
+        return "null"
+    return str(val)
+
 class Prepro:
     comentario = re.compile(r'//[^\r\n]*')
 
@@ -502,7 +511,7 @@ class BinOp(Node):
             if t1 == t2 == "string":
                 return Variable(v1 + v2, "string")
             if t1 == "string" or t2 == "string":
-                return Variable(str(v1) + str(v2), "string")
+                return Variable(ts_repr(v1) + ts_repr(v2), "string")
             raise Exception("[BinOp] Tipos inválidos para '+'")
 
         elif self.value in ('-', '*', '/'):
