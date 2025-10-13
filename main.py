@@ -568,25 +568,28 @@ class VarDec(Node):
 
 class If(Node):
     def evaluate(self, st):
-        if self.children[0].evaluate(st).type != "boolean":
+        cond = self.children[0].evaluate(st)
+        if cond.type != "boolean":
             raise Exception("[If] Condição deve ser booleana")
         
-        if len(self.children) == 3: #tem else
-            if self.children[0].evaluate(st):
+        if len(self.children) == 3:  # tem else
+            if cond.value:
                 self.children[1].evaluate(st)
             else:
                 self.children[2].evaluate(st)
-        else: #não tem else
-            if self.children[0].evaluate(st):
+        else:  # não tem else
+            if cond.value:
                 self.children[1].evaluate(st)
 
 class While(Node):
     def evaluate(self, st):
-        if self.children[0].evaluate(st).type != "boolean":
+        cond = self.children[0].evaluate(st)
+        if cond.type != "boolean":
             raise Exception("[While] Condição deve ser booleana")
-        
-        while self.children[0].evaluate(st):
+
+        while cond.value:
             self.children[1].evaluate(st)
+            cond = self.children[0].evaluate(st)
 
 class Read(Node):
     def evaluate(self, st):
