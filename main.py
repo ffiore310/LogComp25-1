@@ -219,6 +219,10 @@ class Parser:
             else:
                 resultado = VarDec(tipo, [iden])
 
+            if Parser.lex.next.kind != "END":
+                raise Exception("[Parser] Era esperado ';' ao final da declaração de variável")
+            Parser.lex.selectNext()
+
         elif Parser.lex.next.kind == "WHILE":
             Parser.lex.selectNext()
             if Parser.lex.next.kind != "OPEN_PAR":
