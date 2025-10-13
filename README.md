@@ -10,74 +10,52 @@ Repositório privado para o desenvolvimento do projeto e dos roteiros relacionad
 ## Gramática EBNF
 
 ```ebnf
-programa       = { declaracao } EOF ;
 
-declaracao     = acao ";"
-               | atribuicao ";"
-               | if_stmt
-               | while_stmt
-               | comentario
-               ;
+Program        = { Statement } ;
 
-acao           = "ir"
-               | "abrir"
-               | "fechar"
-               | "abrir" "por" tempo
-               | "adicionar" "andar" andar
-               | "limpar" "andares"
-               | "parar"
-               | "campainha"
-               | "anunciar" string
-               | "esperar" tempo
-               ;
+Statement      = 
+      VarDecl ";"
+    | Assignment ";"
+    | Print ";"
+    | IfStatement
+    | WhileStatement
+    | Block
+    | ";" 
+    ;
 
-atribuicao     = "set" "modo" "=" modo
-               | "set" "andar_destino" "=" andar
-               ;
+Block          = "{" { Statement } "}" ;
 
-if_stmt        = "se" condicao ":" bloco [ "senao" ":" bloco ] ;
+VarDecl        = "let" Identifier ":" Type [ "=" BoolExpression ] ;
+Assignment     = Identifier "=" BoolExpression ;
 
-while_stmt     = "enquanto" loop_cond ":" bloco ;
+IfStatement    = "if" "(" BoolExpression ")" Statement [ "else" Statement ] ;
+WhileStatement = "while" "(" BoolExpression ")" Statement ;
 
-bloco          = "{" { declaracao } "}" ;
+BoolExpression = BoolTerm { "||" BoolTerm } ;
+BoolTerm       = RelExpression { "&&" RelExpression } ;
+RelExpression  = Expression { ( ">" | "<" | "===" ) Expression } ;
+Expression     = Term { ( "+" | "-" ) Term } ;
+Term           = Factor { ( "*" | "/" ) Factor } ;
 
-(* --- Condições --- *)
-condicao       = sensor_cond
-               | comparacao                (* ex.: andar_destino == andar_atual *)
-               ;
+Factor         =
+      IntValue
+    | BoolValue
+    | StringValue
+    | Identifier
+    | ReadCall
+    | "(" BoolExpression ")"
+    | ( "+" | "-" | "!" ) Factor
+    ;
 
-sensor_cond    = "lotado"
-               | "porta_bloqueada"
-               | "emergencia"
-               | "porta_aberta"
-               | "fila_vazia"
-               | "ha_destino"
-               | "primeiro_andar"
-               | "ultimo_andar"
-               ;
+ReadCall       = "readline" "(" ")" ;
 
-comparacao     = lado_esq comparador lado_dir ;
+IntValue       = Digit { Digit } ;
+StringValue    = '"' { Character } '"' ;
+BoolValue      = "true" | "false" ;
+Identifier     = Letter { Letter | Digit | "_" } ;
+Type           = "number" | "string" | "boolean" ;
 
-lado_esq       = "andar_atual" | "andar_destino" | "modo" ;
-lado_dir       = "andar_atual" | "andar_destino" | "modo" | andar | modo ;
-
-comparador     = "==" | "!=" | "<" | "<=" | ">" | ">=" ;
-
-(* --- Loops suportados --- *)
-loop_cond      = "fila_nao_vazia"
-               | ( "modo" "==" modo )     (* ex.: enquanto modo == livre *)
-               ;
-
-andar          = "T" | numero ;
-tempo          = numero "s" ;
-
-modo           = "normal" | "servico" | "livre" | numero ;
-
-comentario     = "#" { caractere_que_nao_quebra_linha } ( "\n" | EOF ) ;
-
-string         = "\"" { caractere_sem_aspas_ou_escape | escape } "\"" ;
-escape         = "\\" ( "\"" | "\\" | "n" | "t" ) ;
-
-numero         = [ "+" | "-" ]? DIGITO { DIGITO } ;
-DIGITO         = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+Letter         = "A" | ... | "Z" | "a" | ... | "z" ;
+Digit          = "0" | "1" | ... | "9" ;
+Character      = ? qualquer caractere exceto " e quebra de linha ? ;
 ```
