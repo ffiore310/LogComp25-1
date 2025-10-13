@@ -561,9 +561,10 @@ class VarDec(Node):
         if len(self.children) == 1:
             st.create_variable(self.children[0].value, None, self.value)
         else:
-            if self.value != self.children[1].evaluate(st):
-                raise Exception(f"[VarDec] Tipos incompatíveis na declaração")
-            st.create_variable(self.children[0].value, self.children[1].evaluate(st).value , self.value)
+            valor_inicial = self.children[1].evaluate(st)
+            if self.value != valor_inicial.type:
+                raise Exception(f"[VarDec] Tipos incompatíveis na declaração: esperado {self.value}, obtido {valor_inicial.type}")
+            st.create_variable(self.children[0].value, valor_inicial.value, self.value)
 
 class If(Node):
     def evaluate(self, st):
