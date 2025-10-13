@@ -600,84 +600,13 @@ class NoOp(Node):
     pass
 
 def main ():
-    # if len(sys.argv) < 2:
-    #     print("Nenhuma expressão foi passada.")
-    #     return
+    if len(sys.argv) < 2:
+        print("Nenhuma expressão foi passada.")
+        return
     
-    # filename = sys.argv[1]
-    # with open(filename, "r", encoding="utf-8") as f:
-    #     code = f.read()
-
-    code = '''
-    { // Teste geral
-    let x_1:number;
-    x_1 = readline();
-    
-    log(x_1);
-    
-    if ((x_1 > 1 && !!!(x_1 < 1)) || x_1 === 3) {
-        x_1 = 2;
-    }
-    
-    let x:number = 3+6/3   *  2 -+-  +  2*4/2 + 0/1 -((6+ ((4)))/(2)); // Teste // Teste 2
-    let y_1:number = 3;
-    y_1 = y_1 + x_1;
-    let z__:number;
-    z__ = x + y_1;
-    
-    if (x_1 === 2) {
-        x_1 = 2;
-    }
-    
-    if (x_1 === 3) {
-        x_1 = 2;
-    } else {
-        x_1 = 3;
-    }
-    
-    x_1 = 0;
-    while (x_1 < 1 || x === 2) {
-        log(x_1);
-        x_1 = x_1 + 1;
-    }
-    
-    
-    ;;; {{ }} // Teste de colchetes
-    // Saida final
-    log(x_1);
-    log(x);
-    log(z__+1);
-    
-    // All int operations
-    let y:number = 2;
-    let z:number;
-    z = (y - 1);
-    log(y+z);
-    log(y-z);
-    log(y*z);
-    log(y/z);
-    log(y === z);
-    log(y < z);
-    log(y > z);
-    
-    // All str operations 
-    let a:string;
-    let b:string;
-    
-    x_1 = 1;
-    y = 1; 
-    z = 2;
-    a = "abc";
-    b = "def";
-    log(a+b);
-    log(a+x_1);
-    log(x_1+a);
-    log(a+(x_1===1));
-    log(a === a);
-    log(a < b);
-    log(a > b);
-    } // Teste do filter
-    '''
+    filename = sys.argv[1]
+    with open(filename, "r", encoding="utf-8") as f:
+        code = f.read()
     
     code = Prepro.filter(code)
     resultado = Parser.run(code)
