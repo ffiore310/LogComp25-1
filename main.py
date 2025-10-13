@@ -73,6 +73,8 @@ class Lexer:
                 self.position += 1
             if id == "=":
                 self.next = Token("ASSIGN", id)
+            elif id == "==":
+                raise Exception("[Lexer] Palavra '==' não existe na linguagem analisada")
             else:
                 self.next = Token("EQ", id)
 
