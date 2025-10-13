@@ -276,10 +276,18 @@ class Parser:
     def parseBlock():
         Parser.lex.selectNext()  # consome '{'
         filhos = []
+
+        if Parser.lex.next.kind == "CLOSE_BRA":
+            Parser.lex.selectNext()  # consome '}'
+            return Block(None, filhos)  # bloco vazio
+
+        # Caso contrário, processa normalmente
         while Parser.lex.next.kind != "CLOSE_BRA":
-            filhos.append(Parser.parseStatement())  # (Assignment/Print já consomem ';'; outros não precisam)
+            filhos.append(Parser.parseStatement())
+
         Parser.lex.selectNext()  # consome '}'
         return Block(None, filhos)
+
             
     def parseBoolExpression():
         resultado = 0
