@@ -13,7 +13,6 @@ def get_output_path(filename):
     # Junta tudo no caminho absoluto correto
     return os.path.join(base_dir, asm_name)
 
-
 def ts_repr(val):
     if val is True:
         return "true"
