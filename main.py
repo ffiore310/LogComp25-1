@@ -813,8 +813,10 @@ def main ():
     st = SymbolTable()
     # resultado.evaluate(st)
     resultado.generate(st)
-    output_file = get_output_path(filename)
-    Code.dump(output_file)
+    Code.dump(f"{da_nome(filename)}.asm")
+    # output_file = get_output_path(filename)
+    # Code.dump(output_file)
+
 
 if __name__ == "__main__":
     main()
