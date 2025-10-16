@@ -11,6 +11,17 @@ def ts_repr(val):
         return "null"
     return str(val)
 
+def da_nome(filename):
+    name = ""
+
+    for c in filename:
+        if c == ".":
+            break
+        else:
+            name += c
+    
+    return name
+
 class Prepro:
     comentario = re.compile(r'//[^\r\n]*')
 
@@ -430,6 +441,7 @@ class Parser:
     
 class SymbolTable:
     table = {}
+    shift = 0
 
     @staticmethod
     def getter(key):
@@ -452,25 +464,44 @@ class SymbolTable:
     def create_variable(key, value, type):
         if key in SymbolTable.table:
             raise Exception(f"[SymbolTable] Variável '{key}' já declarada")
-        valor = Variable(value, type)
+        
+        SymbolTable.shift += 4
+        shift = SymbolTable.shift
+
+        valor = Variable(value, type, shift)
         SymbolTable.table[key] = valor
     
 class Variable:
-    def __init__(self, value, type):
+    def __init__(self, value, type, shift):
         self.value = value
         self.type = type
+        self.shift = shift
 
 class Node:
+
+    id = 0
+
+    def generate_id():
+        Node.id += 1
+        return Node.id
+    
     def __init__(self, value, children):
         self.value = value
         self.children = children
+        self.id = Node.generate_id()
 
     def evaluate(self, st):
+        pass
+
+    def generate(self, st):
         pass
 
 class IntVal(Node):
     def evaluate(self, st):
         return Variable(self.value, "number")
+    
+    def generate(self, st):
+        Code.append(f'mov eax, {self.value}')
     
 class BoolVal(Node):
     def evaluate(self, st):
@@ -495,7 +526,13 @@ class UnOp(Node):
             if child.type != "boolean":
                 raise Exception("[UnOp] '!' requer boolean")
             return Variable(not child.value, "boolean")
-
+        
+    def generate(self, st):
+        self.children[0].generate(st)
+        if self.value == '-':
+            Code.append('neg eax')
+        elif self.value == '!':
+            Code.append('not eax')
     
 class BinOp(Node):
     def evaluate(self, st):
@@ -550,10 +587,43 @@ class BinOp(Node):
 
         else:
             raise Exception(f"[BinOp] Operador '{self.value}' inválido")
+        
+    def generate(self, st):
+        self.children[1].generate(st)
+        Code.append('push eax')
+        self.children[0].generate(st)
+        Code.append('pop ecx')
+
+        if self.value in ('+', '-', '*', '/', '&&', '||'):
+            if self.value == '+':
+                Code.append('add eax, ecx')
+            elif self.value == '-':
+                Code.append('sub eax, ecx')
+            elif self.value == '*':
+                Code.append('imul ecx')
+            elif self.value == '/':
+                Code.append('idiv ecx')
+            elif self.value == '&&':
+                Code.append('and eax, ecx')
+            else:
+                Code.append('or eax, ecx')
+        else:
+            Code.append('cmp eax, ecx') #compara eax e ecx. Se a subtracao dos dois for zero, eles sao iguais e um registrador de 1 bit(flag) eh setado para 1. Se for maior seta outra flag para 1 e assim por diante
+            Code.append('mov ecx, 1')
+            Code.append('mov eax, 0')
+            if self.value == '===':
+                Code.append('cmove eax, ecx') #copia ecx em eax se forem iguais
+            elif self.value == '>':
+                Code.append('cmovg eax, ecx') #copia ecx em eax se eax for maior
+            else:
+                Code.append('cmovl eax, ecx') #copia ecx em eax se eax for maior
 
 class Identifier(Node):
     def evaluate(self, st):
         return st.getter(self.value)
+    
+    def generate(self, st):
+        Code.append(f'mov eax, [ebp-{st.getter(self.value).shift}]')
     
 class Print(Node):
     def evaluate(self, st):
@@ -563,13 +633,25 @@ class Print(Node):
             print("true" if value else "false")
         else:
             print(value)
+    
+    def generate(self, st):
+        self.children[0].generate(st)
+        Code.append('push eax')
+        Code.append('push format_out')
+        Code.append('call printf')
+        Code.append('add esp, 8')
 
 class Assignment(Node):
     def evaluate(self, st):
         value_var = self.children[1].evaluate(st) #vai ser do tipo Variable
         st.setter(self.children[0].value, value_var) #setter recebe o valor com Variable ja
 
+    def generate(self, st):
+        self.children[1].generate(st)
+        Code.append(f'mov [ebp-{st.getter(self.children[0].value).shift}], eax')
+
 class VarDec(Node):
+    # self.value, para esse no, eh o tipo da variavel
     def evaluate(self, st):
         if len(self.children) == 1:
             st.create_variable(self.children[0].value, None, self.value)
@@ -579,6 +661,14 @@ class VarDec(Node):
                 raise Exception(f"[VarDec] Tipos incompatíveis na declaração: esperado {self.value}, obtido {valor_inicial.type}")
             st.create_variable(self.children[0].value, valor_inicial.value, self.value)
 
+    def generate(self, st):
+        Code.append('sub esp, 4')
+        st.create_variable(self.children[0].value, None, self.value)
+        if len(self.children) == 2:
+            self.children[1].generate(st)
+            Code.append(f'mov [ebp-{st.getter(self.children[0].value).shift}], eax')
+    
+            
 class If(Node):
     def evaluate(self, st):
         cond = self.children[0].evaluate(st)
@@ -593,6 +683,22 @@ class If(Node):
         else:  # não tem else
             if cond.value:
                 self.children[1].evaluate(st)
+    
+    def generate(self, st):
+        Code.append(f'if_{self.id}:')
+        self.children[0].generate(st)
+        Code.append('cmp eax, 0')
+        if len(self.children) == 3:
+            Code.append(f'je else_{self.id}')
+            self.children[1].generate(st)
+            Code.append(f'jmp exit_{self.id}')
+            Code.append(f'else_{self.id}:')
+            self.children[2].generate(st)
+            Code.append(f'exit_{self.id}:')
+        else:
+            Code.append(f'je exit_{self.id}')
+            self.children[1].generate(st)
+            Code.append(f'exit_{self.id}:')
 
 class While(Node):
     def evaluate(self, st):
@@ -604,17 +710,82 @@ class While(Node):
             self.children[1].evaluate(st)
             cond = self.children[0].evaluate(st)
 
+    def generate(self, st):
+        Code.append(f'loop_{self.id}:')
+        self.children[0].generate(st)
+        Code.append('cmp eax, 0')
+        Code.append(f'je exit_{self.id}')
+        self.children[1].generate(st)
+        Code.append(f'jmp loop_{self.id}')
+        Code.append(f'exit_{self.id}:')
+
 class Read(Node):
     def evaluate(self, st):
         return Variable(int(input()), "number")
+    
+    def generate(self, st):
+        Code.append('push scan_int')
+        Code.append('push format_in')
+        Code.append('call scanf')
+        Code.append('add esp 8')
+        Code.append('mov eax, dword [scan_int]')
     
 class Block(Node):
     def evaluate(self, st):
         for child in self.children:
             child.evaluate(st)
 
+    def generate(self, st):
+        for child in self.children:
+            child.generate(st)
+
 class NoOp(Node):
     pass
+
+class Code:
+
+    instructions = []
+
+    def append(code):
+        Code.instructions.append(code)
+
+    def dump(filename):
+        header = """section .data
+  format_out: db "%d", 10, 0 ; format do printf
+  format_in: db "%d", 0 ; format do scanf
+  scan_int: dd 0 ; 32-bits integer
+
+section .text
+  extern printf ; usar _printf para Windows
+  extern scanf ; usar _scanf para Windows
+  ; extern _ExitProcess@4 ; usar para Windows
+  global _start ; início do programa
+
+_start:
+  push ebp ; guarda o EBP
+  mov ebp, esp ; zera a pilha
+
+"""
+
+        footer = """
+        
+mov esp, ebp ; reestabelece a pilha
+pop ebp
+
+; chamada da interrupcao de saida (Linux)
+mov eax, 1
+xor ebx, ebx
+int 0x80
+"""
+        with open(filename, 'w') as file:
+            #Escrever o cabecalho: ate o inicio do codigo gerado
+            file.write(header)
+
+            #Escreve instrucoes armazenadas
+            file.write("\n".join(Code.instructions))
+
+            #Escreve as instrucoes finais: apos termino dos codigos gerados
+            file.write(footer)
 
 def main ():
     if len(sys.argv) < 2:
@@ -628,7 +799,9 @@ def main ():
     code = Prepro.filter(code)
     resultado = Parser.run(code)
     st = SymbolTable()
-    resultado.evaluate(st)
+    # resultado.evaluate(st)
+    resultado.generate(st)
+    Code.dump(f"{da_nome(filename)}.asm")
 
 if __name__ == "__main__":
     main()
