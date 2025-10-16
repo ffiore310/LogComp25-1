@@ -1,6 +1,18 @@
 import sys
 from typing import List
 import re
+import os
+
+def get_output_path(filename):
+    # Extrai o nome sem extensão
+    asm_name = f"{da_nome(filename)}.asm"
+    
+    # Diretório esperado pelo teste
+    base_dir = "/tmp/compiler-testing-lib/compiler_testing_lib/languages/TypeScript/v3.0"
+    
+    # Junta tudo no caminho absoluto correto
+    return os.path.join(base_dir, asm_name)
+
 
 def ts_repr(val):
     if val is True:
@@ -801,7 +813,8 @@ def main ():
     st = SymbolTable()
     # resultado.evaluate(st)
     resultado.generate(st)
-    Code.dump(f"{da_nome(filename)}.asm")
+    output_file = get_output_path(filename)
+    Code.dump(output_file)
 
 if __name__ == "__main__":
     main()
