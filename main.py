@@ -24,15 +24,15 @@ def ts_repr(val):
 
 def da_nome(filename):
     name = ""
-    index = 0
+    ind = 0
     i = 0
 
     for c in filename:
         if c == ".":
-            index = filename[i]
+            ind = i
         i+=1
 
-    name = filename[0:index]
+    name = filename[0:ind]
     
     return name
 
