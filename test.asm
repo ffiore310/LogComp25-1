@@ -35,6 +35,11 @@ push eax
 push format_out
 call printf
 add esp, 8
+mov eax, 3
+push eax
+push format_out
+call printf
+add esp, 8
         
 mov esp, ebp ; reestabelece a pilha
 pop ebp
