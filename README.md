@@ -1,4 +1,4 @@
-# LogComp25-1
+# LogComp25-2
 
 [![Compilation Status](https://compiler-tester.insper-comp.com.br/svg/ffiore310/LogComp25-1)](https://compiler-tester.insper-comp.com.br/svg/ffiore310/LogComp25-1)
 
