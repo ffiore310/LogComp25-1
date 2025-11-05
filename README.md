@@ -5,7 +5,7 @@
 Repositório privado para o desenvolvimento do projeto e dos roteiros relacionados a matéria de Lógica da Computação 
 
 ### Diagrama sintático do Projeto
-<img width="734" height="1020" alt="image" src="https://github.com/user-attachments/assets/2006ca2b-4b0a-4916-b1f2-cdf5117ddb6c" />
+<img src="./diagrama_novo.drawio.svg" alt="Diagrama Sintático Atualizado" width="734" height="1020" />
 
 ### Gramática EBNF
 
