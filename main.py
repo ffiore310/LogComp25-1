@@ -846,6 +846,7 @@ def main ():
         resultado.evaluate(st)
     except Exception as e:
         print(str(e))
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
