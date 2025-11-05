@@ -126,9 +126,11 @@ class Lexer:
         elif self.source[self.position] == '"':
             self.position += 1
             id = ""
-            while self.position < len(self.source) and self.source[self.position] != '"':
+            while self.position < len(self.source) and self.source[self.position] not in ('"', '\n', '\r'):
                 id += self.source[self.position]
                 self.position += 1
+            if self.position >= len(self.source) or self.source[self.position] != '"':
+                raise Exception("[Lexer] String não terminada")
             self.position += 1
             self.next = Token("STR", id)
 
