@@ -40,7 +40,7 @@ class Lexer:
         self.next = None
 
     def selectNext(self):
-        while self.position < len(self.source) and (self.source[self.position] == " " or self.source[self.position] == "\n" or self.source[self.position] == "\t" or self.source[self.position] == "\r"):
+        while self.position < len(self.source) and (self.source[self.position] in (" ", "\n", "\t", "\r")):
             self.position += 1
             
         if self.position >= len(self.source):
@@ -196,7 +196,7 @@ class Parser:
         return Block(None, filhos)
 
     def parseFuncDeclaration():
-        Parser.lex.selectNext()  # consume 'function'
+        Parser.lex.selectNext()
         if Parser.lex.next.kind != "IDEN":
             raise Exception("[Parser] Era esperado o nome da função")
         func_name = Identifier(Parser.lex.next.value, [])
@@ -455,7 +455,7 @@ class Parser:
             Parser.lex.selectNext()
             node = Parser.parseBoolExpression()
             if Parser.lex.next.kind != "CLOSE_PAR":
-                raise Exception("Parênteses não foram fechados!")
+                raise Exception("[Parser] Parênteses não foram fechados!")
             Parser.lex.selectNext()
             return node
 
@@ -491,25 +491,25 @@ class SymbolTable:
             return self.table[key]
         if self.parent is not None:
             return self.parent.getter(key)
-        raise Exception(f"[SymbolTable] Variável '{key}' não encontrada")
+        raise Exception(f"[Semantic] Identificador '{key}' não encontrado")
         
     def setter(self, key, variable):
         if key in self.table:
             var_existente = self.table[key]
             if var_existente.is_function:
-                raise Exception(f"[SymbolTable] '{key}' é uma função")
+                raise Exception(f"[Semantic] '{key}' é uma função (não pode receber atribuição)")
             if var_existente.type != variable.type:
-                raise Exception(f"[SymbolTable] Tipos incompatíveis em atribuição: {var_existente.type} <- {variable.type}")
+                raise Exception(f"[Semantic] Tipos incompatíveis em atribuição: {var_existente.type} <- {variable.type}")
             self.table[key].value = variable.value
             return
         if self.parent is not None:
             self.parent.setter(key, variable)
             return
-        raise Exception(f"[SymbolTable] Variável '{key}' não foi declarada previamente")
+        raise Exception(f"[Semantic] Variável '{key}' não foi declarada previamente")
 
     def create_variable(self, key, value, type, is_function=False):
         if key in self.table:
-            raise Exception(f"[SymbolTable] Variável '{key}' já declarada")
+            raise Exception(f"[Semantic] Variável '{key}' já declarada")
         self.shift += 4
         shift = self.shift
         self.table[key] = Variable(value, type, shift, is_function=is_function)
@@ -554,15 +554,15 @@ class UnOp(Node):
         child = self.children[0].evaluate(st)
         if self.value == '+':
             if child.type != "number":
-                raise Exception("[UnOp] '+' requer número")
+                raise Exception("[Semantic] '+' requer número")
             return Variable(+child.value, "number")
         elif self.value == '-':
             if child.type != "number":
-                raise Exception("[UnOp] '-' requer número")
+                raise Exception("[Semantic] '-' requer número")
             return Variable(-child.value, "number")
         elif self.value == '!':
             if child.type != "boolean":
-                raise Exception("[UnOp] '!' requer boolean")
+                raise Exception("[Semantic] '!' requer boolean")
             return Variable(not child.value, "boolean")
     def generate(self, st):
         self.children[0].generate(st)
@@ -584,7 +584,7 @@ class BinOp(Node):
                 return Variable(v1 + v2, "string")
             if t1 == "string" or t2 == "string":
                 return Variable(ts_repr(v1) + ts_repr(v2), "string")
-            raise Exception("[BinOp] Tipos inválidos para '+'")
+            raise Exception("[Semantic] Tipos inválidos para '+'")
         elif self.value in ('-', '*', '/'):
             if t1 == t2 == "number":
                 if self.value == '-':
@@ -593,11 +593,11 @@ class BinOp(Node):
                     res = v1*v2
                 else:
                     if v2 == 0:
-                        raise Exception("[BinOp] Divisão por zero")
+                        raise Exception("[Semantic] Divisão por zero")
                     res = v1//v2
                 return Variable(res, "number")
             else:
-                raise Exception(f"[BinOp] Tipos inválidos para '{self.value}'")
+                raise Exception(f"[Semantic] Tipos inválidos para '{self.value}'")
         elif self.value in ('>', '<', '==='):
             if t1 == t2:
                 if self.value == '>':
@@ -608,7 +608,7 @@ class BinOp(Node):
                     res = (v1 == v2)
                 return Variable(res, "boolean")
             else:
-                raise Exception("[BinOp] Comparação entre tipos diferentes")
+                raise Exception("[Semantic] Comparação entre tipos diferentes")
         elif self.value in ('&&', '||'):
             if t1 == t2 == "boolean":
                 if self.value == '&&':
@@ -617,9 +617,9 @@ class BinOp(Node):
                     res = (v1 or v2)
                 return Variable(res, "boolean")
             else:
-                raise Exception("[BinOp] Tipos inválidos para operador lógico")
+                raise Exception("[Semantic] Tipos inválidos para operador lógico")
         else:
-            raise Exception(f"[BinOp] Operador '{self.value}' inválido")
+            raise Exception(f"[Semantic] Operador '{self.value}' inválido")
     def generate(self, st):
         self.children[1].generate(st)
         Code.append('push eax')
@@ -685,7 +685,7 @@ class VarDec(Node):
         else:
             valor_inicial = self.children[1].evaluate(st)
             if self.value != valor_inicial.type:
-                raise Exception(f"[VarDec] Tipos incompatíveis na declaração: esperado {self.value}, obtido {valor_inicial.type}")
+                raise Exception(f"[Semantic] Tipos incompatíveis na declaração: esperado {self.value}, obtido {valor_inicial.type}")
             st.create_variable(self.children[0].value, valor_inicial.value, self.value, is_function=False)
     def generate(self, st):
         Code.append('sub esp, 4')
@@ -702,7 +702,7 @@ class If(Node):
     def evaluate(self, st):
         cond = self.children[0].evaluate(st)
         if cond.type != "boolean":
-            raise Exception("[If] Condição deve ser booleana")
+            raise Exception("[Semantic] Condição do if deve ser booleana")
         if len(self.children) == 3:
             if cond.value:
                 ret = self.children[1].evaluate(st)
@@ -722,7 +722,7 @@ class While(Node):
     def evaluate(self, st):
         cond = self.children[0].evaluate(st)
         if cond.type != "boolean":
-            raise Exception("[While] Condição deve ser booleana")
+            raise Exception("[Semantic] Condição do while deve ser booleana")
         while cond.value:
             ret = self.children[1].evaluate(st)
             if ret is not None:
@@ -750,25 +750,26 @@ class Block(Node):
                 return ret
 
 class FuncDec(Node):
-    # value = return type; children = [Identifier, VarDec..., Block]
     def evaluate(self, st):
         name_node = self.children[0]
         ret_type = self.value
         st.create_variable(name_node.value, self, ret_type, is_function=True)
 
 class FuncCall(Node):
-    # value = function name; children = [expr...]
     def evaluate(self, st):
-        var = st.getter(self.value)
+        try:
+            var = st.getter(self.value)
+        except Exception:
+            raise Exception(f"[Semantic] Função '{self.value}' não encontrada")
         if not var.is_function:
-            raise Exception(f"[FuncCall] '{self.value}' não é uma função")
+            raise Exception(f"[Semantic] '{self.value}' não é uma função")
         func_node = var.value
         decl_children = func_node.children
         func_name = decl_children[0].value
         params = [c for c in decl_children[1:-1] if isinstance(c, VarDec)]
         body = decl_children[-1]
         if len(params) != len(self.children):
-            raise Exception(f"[FuncCall] Número de argumentos incorreto em '{func_name}'")
+            raise Exception(f"[Semantic] Número de argumentos incorreto em '{func_name}'")
         call_st = SymbolTable(parent=st)
         for i in range(len(params)):
             p_decl = params[i]
@@ -780,15 +781,15 @@ class FuncCall(Node):
             p_id = p_decl.children[0].value
             arg_val = self.children[i].evaluate(st)
             if arg_val.type != p_decl.value:
-                raise Exception(f"[FuncCall] Tipo incompatível no argumento {i+1} de '{func_name}': {arg_val.type} != {p_decl.value}")
+                raise Exception(f"[Semantic] Tipo incompatível no argumento {i+1} de '{func_name}': {arg_val.type} != {p_decl.value}")
             call_st.setter(p_id, arg_val)
         ret = body.evaluate(call_st)
         if ret is None:
             if var.type == "void":
                 return Variable(None, "void")
-            raise Exception(f"[FuncCall] Função '{func_name}' sem return")
+            raise Exception(f"[Semantic] Função '{func_name}' sem return")
         if ret.type != var.type:
-            raise Exception(f"[FuncCall] Tipo de retorno incompatível em '{func_name}': {ret.type} != {var.type}")
+            raise Exception(f"[Semantic] Tipo de retorno incompatível em '{func_name}': {ret.type} != {var.type}")
         return ret
 
 class NoOp(Node):
@@ -831,13 +832,15 @@ def main ():
         print("Nenhuma expressão foi passada.")
         return
     filename = sys.argv[1]
-    with open(filename, "r", encoding="utf-8") as f:
-        code = f.read()
-    code = Prepro.filter(code)
-    resultado = Parser.run(code)
-    st = SymbolTable()
-    resultado.evaluate(st)
-    # Testando de novo agora vai
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            code = f.read()
+        code = Prepro.filter(code)
+        resultado = Parser.run(code)
+        st = SymbolTable()
+        resultado.evaluate(st)
+    except Exception as e:
+        print(str(e))
 
 if __name__ == "__main__":
     main()
