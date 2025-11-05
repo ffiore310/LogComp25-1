@@ -837,7 +837,7 @@ def main ():
     resultado = Parser.run(code)
     st = SymbolTable()
     resultado.evaluate(st)
-    # Teste
+    # Testando de novo
 
 if __name__ == "__main__":
     main()
