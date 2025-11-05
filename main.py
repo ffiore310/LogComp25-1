@@ -763,34 +763,39 @@ class FuncCall(Node):
             raise Exception(f"[Semantic] Função '{self.value}' não encontrada")
         if not var.is_function:
             raise Exception(f"[Semantic] '{self.value}' não é uma função")
+
         func_node = var.value
         decl_children = func_node.children
         func_name = decl_children[0].value
         params = [c for c in decl_children[1:-1] if isinstance(c, VarDec)]
         body = decl_children[-1]
+
         if len(params) != len(self.children):
             raise Exception(f"[Semantic] Número de argumentos incorreto em '{func_name}'")
+
         call_st = SymbolTable(parent=st)
-        for i in range(len(params)):
-            p_decl = params[i]
-            p_id = p_decl.children[0].value
-            p_type = p_decl.value
-            call_st.create_variable(p_id, None, p_type, is_function=False)
-        for i in range(len(params)):
-            p_decl = params[i]
-            p_id = p_decl.children[0].value
+        for p in params:
+            call_st.create_variable(p.children[0].value, None, p.value, is_function=False)
+
+        for i, p in enumerate(params):
             arg_val = self.children[i].evaluate(st)
-            if arg_val.type != p_decl.value:
-                raise Exception(f"[Semantic] Tipo incompatível no argumento {i+1} de '{func_name}': {arg_val.type} != {p_decl.value}")
-            call_st.setter(p_id, arg_val)
+            if arg_val.type != p.value:
+                raise Exception(f"[Semantic] Tipo incompatível no argumento {i+1} de '{func_name}': {arg_val.type} != {p.value}")
+            call_st.setter(p.children[0].value, arg_val)
+
         ret = body.evaluate(call_st)
+
+        # >>> mudança principal:
         if ret is None:
             if var.type == "void":
-                return Variable(None, "void")
+                return None          # não devolve Variable; evita abortar o bloco
             raise Exception(f"[Semantic] Função '{func_name}' sem return")
+
         if ret.type != var.type:
             raise Exception(f"[Semantic] Tipo de retorno incompatível em '{func_name}': {ret.type} != {var.type}")
+
         return ret
+
 
 class NoOp(Node):
     pass
